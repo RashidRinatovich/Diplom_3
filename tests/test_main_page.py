@@ -1,76 +1,57 @@
 from pages.main_page import MainPage
-from pages.feed_page import FeedPage
-from data.urls import Urls
 import allure
 
 
-@allure.suite("Лента заказов")
-class TestOrderFeed:
-    
-    @allure.title("При создании заказа счетчик 'Выполнено за все время' увеличивается")
-    def test_total_orders_counter_increases(self, logged_in_driver):
-       
-        main_page = MainPage(logged_in_driver)
-        feed_page = FeedPage(logged_in_driver)
+@allure.suite("Главная страница")
+class TestMainPage:
 
-        with allure.step("Шаг 1: Получить начальное значение счетчика 'Выполнено за всё время'"):
-            main_page.click_order_feed_button()
-            feed_page.wait_for_url_to_be(Urls.FEED_URL)
-            feed_page.wait_for_counters_to_load()
-            initial_total_orders = feed_page.get_total_orders_count()
+    @allure.title("Проверка перехода по клику на «Конструктор»")
+    def test_navigation_to_constructor(self, driver):
+        
+        main_page = MainPage(driver)
+        main_page.click_order_feed_button()
+        main_page.click_constructor_button()
+        main_page.wait_for_assemble_burger_title()
+        assert main_page.is_assemble_burger_title_displayed()
 
-        with allure.step("Шаг 2: Создать новый заказ"):
-            main_page.click_constructor_button()
-            main_page.wait_for_assemble_burger_title()
-            order_number = main_page.create_order_and_get_number()
-            assert order_number is not None, "Номер заказа не получен"
+    @allure.title("Проверка перехода по клику на «Лента заказов»")
+    def test_navigation_to_order_feed(self, driver):
+        
+        main_page = MainPage(driver)
+        main_page.click_order_feed_button()
+        main_page.wait_for_feed_url()
+        assert main_page.is_feed_url()
 
-        with allure.step("Шаг 3: Проверить, что счетчик 'Выполнено за всё время' увеличился"):
-            main_page.click_order_feed_button()
-            feed_page.wait_for_url_to_be(Urls.FEED_URL)
-            feed_page.wait_for_total_orders_to_increase(initial_total_orders)
-            final_total_orders = feed_page.get_total_orders_count()
-            assert final_total_orders > initial_total_orders, "Счетчик 'Выполнено за всё время' не увеличился"
+    @allure.title("Проверка появления всплывающего окна с деталями ингредиента")
+    def test_ingredient_modal_opens(self, driver):
+        
+        main_page = MainPage(driver)
+        main_page.click_first_ingredient()
+        main_page.wait_for_modal_header()
+        assert main_page.is_modal_header_displayed()
 
-    @allure.title("При создании заказа счетчик 'Выполнено за сегодня' увеличивается")
-    def test_today_orders_counter_increases(self, logged_in_driver):
-       
-        main_page = MainPage(logged_in_driver)
-        feed_page = FeedPage(logged_in_driver)
+    @allure.title("Проверка закрытия всплывающего окна с деталями по клику на крестик")
+    def test_ingredient_modal_closes(self, driver):
+        
+        main_page = MainPage(driver)
+        main_page.click_first_ingredient(js=True)
+        main_page.wait_for_modal_header()
+        main_page.click_modal_close_button()
+        main_page.wait_for_modal_to_close()
+        assert main_page.is_modal_header_not_present()
 
-        with allure.step("Шаг 1: Получить начальное значение счетчика 'Выполнено за сегодня'"):
-            main_page.click_order_feed_button()
-            feed_page.wait_for_url_to_be(Urls.FEED_URL)
-            feed_page.wait_for_counters_to_load()
-            initial_today_orders = feed_page.get_today_orders_count()
+    @allure.title("Проверка увеличения счётчика ингредиента при добавлении в заказ")
+    def test_ingredient_counter_increases_on_add(self, driver):
+        
+        main_page = MainPage(driver)
+        ingredient_element = main_page.get_first_filling()
+        initial_counter_text = main_page.get_ingredient_counter(ingredient_element)
+        initial_count = int(initial_counter_text) if initial_counter_text else 0
 
-        with allure.step("Шаг 2: Создать новый заказ"):
-            main_page.click_constructor_button()
-            main_page.wait_for_assemble_burger_title()
-            order_number = main_page.create_order_and_get_number()
-            assert order_number is not None, "Номер заказа не получен"
+        main_page.drag_first_filling_to_constructor()
 
-        with allure.step("Шаг 3: Проверить, что счетчик 'Выполнено за сегодня' увеличился"):
-            main_page.click_order_feed_button()
-            feed_page.wait_for_url_to_be(Urls.FEED_URL)
-            feed_page.wait_for_today_orders_to_increase(initial_today_orders)
-            final_today_orders = feed_page.get_today_orders_count()
-            assert final_today_orders > initial_today_orders, "Счетчик 'Выполнено сегодня' не увеличился"
+        expected_count = str(initial_count + 1)
+        main_page.wait_for_ingredient_counter_value(main_page.get_first_filling(), expected_count)
 
-    @allure.title("После оформления заказа его номер появляется в разделе 'В работе'")
-    def test_order_number_appears_in_progress(self, logged_in_driver):
-      
-        main_page = MainPage(logged_in_driver)
-        feed_page = FeedPage(logged_in_driver)
-
-        with allure.step("Шаг 1: Создать новый заказ"):
-            main_page.click_constructor_button()
-            main_page.wait_for_assemble_burger_title()
-            order_number = main_page.create_order_and_get_number()
-            assert order_number is not None, "Номер заказа не получен"
-
-        with allure.step("Шаг 2: Проверить, что номер заказа появился в разделе 'В работе'"):
-            main_page.click_order_feed_button()
-            feed_page.wait_for_url_to_be(Urls.FEED_URL)
-            feed_page.wait_for_order_in_progress(order_number)
-            assert order_number in feed_page.get_in_progress_orders(), "Номер заказа не найден в ленте 'В работе'"
+        final_counter_text = main_page.get_ingredient_counter(main_page.get_first_filling())
+        assert final_counter_text == expected_count
